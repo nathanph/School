@@ -25,13 +25,13 @@ typedef struct Cache{
     uint32_t blockSize; 
     uint8_t setBits; 
     uint32_t setSize; 
-    uint32_t ** tags; 
+    uint64_t ** tags; 
 } Cache;
 
 /**
  * Flag type definition
  */
-typedef union option_flag_t{
+typedef union flag_t{
     struct {
         bool h : 1;
         bool v : 1;
@@ -82,7 +82,7 @@ void printUsage(void);
  * @return true if all required options and arguments are present with no
  * invalid options
  */
-bool getOptions(int argc, char *argv[]);
+bool getOptions(int argc, char *argv[], flag_t flags, argument_t args);
 
 /**
  * Creates a Cache based on options and arguments gathered by getOptions().
@@ -90,13 +90,13 @@ bool getOptions(int argc, char *argv[]);
  * This function dynamically allocates data onto the heap. Be sure to call
  * freeCacheTags() to free memory and avoid memory leaks.
  */
-void optionsToCache(void);
+void optionsToCache(argument_t args, Cache cache);
 
 /**
  * Frees the dynamically allocated data from the heap that was created when
  * calling optionsToCache().
  */
-void freeCacheTags(void);
+void freeCacheTags(Cache cache);
 
 /**
  * Reads and parses the trace file provided by the argument of the -t command-
@@ -104,6 +104,6 @@ void freeCacheTags(void);
  * 
  * @return true if the file is read and parsed without issue
  */
-bool readAndParseTraceFile(void);
+bool readAndParseTraceFile(argument_t args, Cache cache);
 
 #endif  /* CSIM_H */

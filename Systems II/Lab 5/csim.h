@@ -29,6 +29,15 @@ typedef struct Cache{
 } Cache;
 
 /**
+ * Trace definition
+ */
+typedef struct trace_t {
+    uint64_t address;
+    char operation;
+    uint8_t size;
+} trace_t;
+
+/**
  * Flag type definition
  */
 typedef union flag_t{
@@ -79,31 +88,73 @@ void printUsage(void);
  * 
  * @param argc number of command-line options
  * @param argv arguments of command-line options
+ * @param args arguments read from command line
+ * @param cache the cache to manipulate
  * @return true if all required options and arguments are present with no
  * invalid options
  */
-bool getOptions(int argc, char *argv[], flag_t flags, argument_t args);
+bool getOptions(int argc, char *argv[], flag_t *flags, argument_t *args);
 
 /**
  * Creates a Cache based on options and arguments gathered by getOptions().
  * <p>
  * This function dynamically allocates data onto the heap. Be sure to call
  * freeCacheTags() to free memory and avoid memory leaks.
+ * 
+ * @param args arguments read from command line
+ * @param cache the cache to manipulate
  */
-void optionsToCache(argument_t args, Cache cache);
+void optionsToCache(argument_t *args, Cache *cache);
 
 /**
  * Frees the dynamically allocated data from the heap that was created when
  * calling optionsToCache().
+ * 
+ * @param cache the cache to manipulate
  */
-void freeCacheTags(Cache cache);
+void freeCacheTags(Cache *cache);
 
 /**
  * Reads and parses the trace file provided by the argument of the -t command-
  * line option.
  * 
+ * @param args arguments read from command line
+ * @param cache the cache to manipulate
  * @return true if the file is read and parsed without issue
  */
-bool readAndParseTraceFile(argument_t args, Cache cache);
+bool readAndParseTraceFile(argument_t *args, Cache *cache);
+
+
+/**
+ * Loads data from the cache.
+ * 
+ * @param trace valgrind data to be used
+ * @param cache the cache to load from
+ * @return true on success
+ */
+bool cacheLoad(trace_t *trace, Cache *cache);
+
+/**
+ * Stores data into the cache.
+ * 
+ * @param trace valgrind  data to be used
+ * @param cache the cache to store into
+ * @return true on success
+ */
+bool cacheStore(trace_t *trace, Cache *cache);
+
+/**
+ * Modifies data in the cache.
+ * 
+ * @param trace valgrind  data to be used
+ * @param cache the cache to modify
+ * @return true on success
+ */
+bool cacheModify(trace_t *trace, Cache *cache);
+
+uint64_t getBits(uint64_t value) {
+    
+    return 0;
+}
 
 #endif  /* CSIM_H */

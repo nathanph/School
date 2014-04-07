@@ -26,6 +26,64 @@
  */
 #define BUFFER_SIZE 80
 
+void debugArgs(argument_t *args) {
+    printf(
+            "args.setBits = %s\n"
+            "args.associativity = %s\n"
+            "args.blockBits = %s\n"
+            "args.traceFile = %s\n",
+            args->setBits,
+            args->associativity,
+            args->blockBits,
+            args->traceFile
+    );
+}
+
+void debugFlags(flag_t *flags) {
+    printf(
+            "flags.help = %d\n"
+            "flags.verbose = %d\n"
+            "flags.setBits = %d\n"
+            "flags.associativity = %d\n"
+            "flags.blockBits = %d\n"
+            "flags.traceFile = %d\n",
+            flags->help,
+            flags->verbose,
+            flags->setBits,
+            flags->associativity,
+            flags->blockBits,
+            flags->traceFile
+    );
+}
+
+void debugCache(Cache *cache) {
+    printf(
+            "cache.associativity = %s\n"
+            "cache.blockBits = %s\n"
+            "cache.blockSize = %s\n"
+            "cache.setBits = %s\n"
+            "cache.setSize = %s\n"
+            "cache.tags = 0x%h\n",
+            cache->associativity,
+            cache->blockBits,
+            cache->blockSize,
+            cache->setBits,
+            cache->setSize,
+            cache->tags
+    );
+}
+
+void debugTrace(trace_t *trace) {
+    printf( 
+            "trace.address = %d\n"
+            "trace.operation = %c\n"
+            "trace.size = %d\n",
+            trace->address,
+            trace->operation,
+            trace->size
+    );
+}
+
 /**
  * Main body - initializes values and controls logic flow.
  * 
@@ -56,21 +114,41 @@ int main(int argc, char * argv[])
     cache.setBits = 0;
     cache.setSize = 0;
     cache.tags = NULL;
-
-    if(!getOptions(argc, argv, flags, args))
+        
+    printf("Reading options...\n");
+    
+    if(!getOptions(argc, argv, &flags, &args))
             return (EXIT_FAILURE);
     
+    printf(
+            "Options read.\n"
+            "Creating cache...\n"
+    );
+       
     // We now MUST make sure we free the memory we've dynamically allocated.
-    optionsToCache(args, cache);
+    optionsToCache(&args, &cache);
     
-    if(!readAndParseTraceFile(args,cache)) 
+    printf(
+            "Cache created.\n"
+            "Parsing trace file...\n"
+    );
+    
+    if(!readAndParseTraceFile(&args,&cache)) 
     {
-        freeCacheTags(cache);
+        freeCacheTags(&cache);
         return (EXIT_FAILURE);
     }
 
-    freeCacheTags(cache);
+    printf(
+            "Trace file parsed.\n"
+            "Freeing cache memory...\n"
+    );
+    
+    freeCacheTags(&cache);
 
+    printf("Cache memory freed.\n");
+
+    
     // pass to printSummary the number of hits, misses and evictions
     //printSummary(0, 0, 0);
     return (EXIT_SUCCESS);
@@ -82,32 +160,32 @@ int main(int argc, char * argv[])
  * This function dynamically allocates data onto the heap. Be sure to call
  * freeCacheTags() to free memory and avoid memory leaks.
  */
-void optionsToCache(argument_t args, Cache cache) {
-    cache.associativity = atoi(args.associativity);
-    cache.blockBits = atoi(args.blockBits);
-    cache.blockSize = pow(2,cache.blockBits);
-    cache.setBits = atoi(args.setBits);
-    cache.setSize = pow(2,cache.setBits);
-    cache.tags = (uint64_t **) malloc(cache.setSize*sizeof(uint64_t *));
+void optionsToCache(argument_t *args, Cache *cache) {
+    cache->associativity = atoi(args->associativity);
+    cache->blockBits = atoi(args->blockBits);
+    cache->blockSize = pow(2,cache->blockBits);
+    cache->setBits = atoi(args->setBits);
+    cache->setSize = pow(2,cache->setBits);
+    cache->tags = (uint64_t **) malloc(cache->setSize*sizeof(uint64_t *));
     uint64_t set;
-    for(set=0; set<cache.setSize; set++)
-        cache.tags[set] = (uint64_t *) malloc(cache.associativity*sizeof(uint64_t));
+    for(set=0; set<cache->setSize; set++)
+        cache->tags[set] = (uint64_t *) malloc(cache->associativity*sizeof(uint64_t));
     
     uint8_t associativity;
-    for(set=0; set<cache.setSize; set++)
-        for(associativity=0; associativity<cache.associativity; associativity++)
-            cache.tags[set][associativity]=-1;
+    for(set=0; set<cache->setSize; set++)
+        for(associativity=0; associativity<cache->associativity; associativity++)
+            cache->tags[set][associativity]=-1;
 }
 
 /**
  * Frees the dynamically allocated data from the heap that was created when
  * calling optionsToCache().
  */
-void freeCacheTags(Cache cache) {
+void freeCacheTags(Cache *cache) {
     uint64_t set;
-    for(set=0; set<cache.setSize; set++)
-        free(cache.tags[set]);
-    free(cache.tags);
+    for(set=0; set<cache->setSize; set++)
+        free(cache->tags[set]);
+    free(cache->tags);
 }
 
 /**
@@ -143,7 +221,7 @@ void printUsage(void){
  * @return true if all required options and arguments are present with no
  * invalid options
  */
-bool getOptions(int argc, char *argv[], flag_t flags, argument_t args) {
+bool getOptions(int argc, char *argv[], flag_t *flags, argument_t *args) {
     extern char *optarg; 
     char option;
 
@@ -151,27 +229,27 @@ bool getOptions(int argc, char *argv[], flag_t flags, argument_t args) {
             switch (option)
             {
                     case 'h':
-                            flags.h = true;
+                            flags->help = true;
                             printUsage();
                             return false;
                     case 'v':
-                            flags.v = true;
+                            flags->verbose = true;
                             break;
                     case 's':
-                            flags.s = true;
-                            args.s = optarg;
+                            flags->setBits = true;
+                            args->setBits = optarg;
                             break;
                     case 'E':
-                            flags.E = true;
-                            args.E = optarg;
+                            flags->associativity = true;
+                            args->associativity = optarg;
                             break;
                     case 'b':
-                            flags.b = true;
-                            args.b = optarg;
+                            flags->blockBits = true;
+                            args->blockBits = optarg;
                             break;
                     case 't':
-                            flags.t = true;
-                            args.t = optarg;
+                            flags->traceFile = true;
+                            args->traceFile = optarg;
                             break;
                     case '?':
                             switch(optopt) {
@@ -200,25 +278,25 @@ bool getOptions(int argc, char *argv[], flag_t flags, argument_t args) {
                             return false;
             }
 
-    if (!flags.s) {	/* -s is missing and mandatory */
+    if (!flags->setBits) {	/* -s is missing and mandatory */
             fprintf(stderr, "%s: missing -s option\n", argv[0]);
             printUsage();
             // fprintf(stderr, usage, argv[0]);
             return false;
     }
-    if (!flags.E) {	/* -E is missing and mandatory */
+    if (!flags->associativity) {	/* -E is missing and mandatory */
             fprintf(stderr, "%s: missing -E option\n", argv[0]);
             printUsage();
             // fprintf(stderr, usage, argv[0]);
             return false;
     }
-    if (!flags.b) {	/* -b is missing and mandatory */
+    if (!flags->blockBits) {	/* -b is missing and mandatory */
             fprintf(stderr, "%s: missing -b option\n", argv[0]);
             printUsage();
             // fprintf(stderr, usage, argv[0]);
             return false;
     }
-    if (!flags.t) {	/* -t is missing and mandatory */
+    if (!flags->traceFile) {	/* -t is missing and mandatory */
             fprintf(stderr, "%s: missing -t option\n", argv[0]);
             printUsage();
             // fprintf(stderr, usage, argv[0]);
@@ -233,57 +311,112 @@ bool getOptions(int argc, char *argv[], flag_t flags, argument_t args) {
  * 
  * @return true if the file is read and parsed without issue
  */
-bool readAndParseTraceFile(argument_t args, Cache cache) {
+bool readAndParseTraceFile(argument_t *args, Cache *cache) {
     FILE * traceFile;
     char buffer[80];
     
-    typedef struct Trace {
-        uint64_t address;
-        char operation;
-        uint8_t size;
-    } Trace;
-    
-    Trace trace;
+    trace_t trace;
     trace.address = 0;
     trace.operation = 0;
     trace.size = 0;
 
-    traceFile = fopen (args.traceFile , "r");
+    traceFile = fopen (args->traceFile , "r");
     
     if (traceFile == NULL) {
         perror ("Error opening file");
         return false;
     }
-    else
-    {
-        printf("File read!\n");
-        while ( fgets (buffer , BUFFER_SIZE , traceFile) != NULL ) {
-            printf("\n%s",buffer);
-            sscanf(buffer,"%*c%c %Lx,%c",&(trace.operation),&(trace.address),&(trace.size));
-            // Quick char to int subtraction technique.
-            // Equivalent to size = atoi((char *)(&size)) or size = size - 48.
-            trace.size -= '0';
-            
-            // TODO:: cache stuff
-            switch(trace.operation) {
-                case 'L':
-                    
-                    break;
-                case 'S':
-                    
-                    break;
-                case 'M':
-                    
-                    break;
-                case 'I':
-                    
-                    break;
-                default:
-                    
-                    return false;
-            }
+
+    printf("File read!\n");
+    while ( fgets (buffer , BUFFER_SIZE , traceFile) != NULL ) {
+        printf("\n%s",buffer);
+        sscanf(buffer,"%*c%c %Lx,%c",
+                &(trace.operation),
+                &(trace.address),
+                &(trace.size)
+        );
+        // Quick char to int subtraction technique.
+        // Equivalent to size = atoi((char *)(&size)) or size = size - 48.
+        trace.size -= '0';
+
+        switch(trace.operation) {
+            case 'L':
+                cacheLoad(&trace,cache);
+                break;
+            case 'S':
+                cacheStore(&trace,cache);
+                break;
+            case 'M':
+                cacheModify(&trace,cache);
+                break;
+            case 'I':
+                break;
+            default:
+                return false;
         }
-        fclose (traceFile);
     }
+    fclose (traceFile);
+    
     return true;
+}
+
+/**
+ * Loads data from the cache.
+ * 
+ * @param trace valgrind data to be used
+ * @param cache the cache to load from
+ * @return true on success
+ */
+bool cacheLoad(trace_t *trace, Cache *cache) {
+    if(trace->operation != 'L')
+        return false;
+    
+    return true;
+}
+
+/**
+ * Stores data into the cache.
+ * 
+ * @param trace valgrind  data to be used
+ * @param cache the cache to store into
+ * @return true on success
+ */
+bool cacheStore(trace_t *trace, Cache *cache) {
+    if(trace->operation != 'S')
+        return false;
+    
+    return true;
+}
+
+/**
+ * Modifies data in the cache.
+ * 
+ * @param trace valgrind  data to be used
+ * @param cache the cache to modify
+ * @return true on success
+ */
+bool cacheModify(trace_t *trace, Cache *cache) {
+    if(trace->operation != 'M')
+        return false;
+    
+    return true;
+}
+
+/**
+ * Returns the bits between start and end.
+ * 
+ * @param value the value to pull bits from.
+ * @param start the start bit (0-63)
+ * @param end the end bit (0-63)
+ * @return the bits between start and end of value
+ */
+uint64_t getBits(uint64_t value, uint8_t start, uint8_t end) {
+    if(start<0 || start>=64 || end<0 || end>=64 || start>end)
+        return 0;
+    int i;
+    uint64_t mask=0;
+    for(i=0; i<=end; i++)
+        mask = (mask<<1)|1;
+    mask<<=start;
+    return mask&value;
 }

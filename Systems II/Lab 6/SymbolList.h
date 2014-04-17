@@ -5,7 +5,7 @@
  * Created on April 16, 2014, 6:41 AM
  */
 
-#ifndef SYMBOLLIST_H
+#ifndef SYMBOLLIST_H 
 #define	SYMBOLLIST_H
  
 #ifdef	__cplusplus

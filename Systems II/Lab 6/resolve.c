@@ -24,11 +24,9 @@
 
 #include <sys/stat.h>
 #include <stdio.h>
-#include <stdlib.h> 
+#include <stdlib.h>
 #include <string.h>
 #include "resolve.h"
-#include "SymbolList.h"
-
 
 int main(int argc, char * argv[])
 {
@@ -61,42 +59,154 @@ int main(int argc, char * argv[])
         }
     }
 	
+	if( searchList(defined,"main") == NULL )
+	{
+		printf(": undefined reference to main\n");
+	}
+	
+	node_t *node = undefined->head;
+	
+	while( node != NULL ) {
+		if(node != undefined->head && node!=undefined->tail)
+		{
+			printf(": undefined reference to %s\n", node->name);
+		}
+		node=node->next;
+	}
+	 
+	printf("Defined Symbol Table\n");
+	printList(defined);
+	// printf("\nUndefined Symbol Table:\n");
+	// printList(undefined);
+	
 	deleteList(undefined);
 	deleteList(defined);
+	return 0;
 }
 
 static void handleObjectFile(char * filename, linkedList_t * defined, linkedList_t * undefined)
 {
-	char command[120]="nm ";
-	strcat(command, filename);
+	char command[120];
 	char buffer[120];
 	FILE *fp;
-	fp = popen(command, "r");
 	
-	// you need to write this displayMessageAndExit function
+	sprintf(command, "nm %s", filename);
+	// printf("%s\n",command);	
+	fp = popen(command, "r");
 	if (fp == NULL)  displayMessageAndExit("popen failed\n");
 	
 	char symbolType = '\0';
 	char symbolName[31];
 	while (fgets(buffer, sizeof(buffer), fp))
 	{
-		sscanf(buffer,"%*d %c %s",&symbolType,symbolName);
-		handleObjectSymbol(symbolType,&symbolName,defined,undefined);
+		// puts(buffer);
+		sscanf(buffer,"%*9c %c %s",&symbolType,symbolName);         
+		handleObjectSymbol(symbolType,&symbolName[0],defined,undefined);
 	}
 	pclose(fp);
 
-	return;
-    // printf("object file: %s\n", filename);
+	return; 
 }
 
-handleObjectSymbol(char symbolType, char * symbolName, linkedList_t * defined, linkedList_t * undefined) 
+static bool handleArchiveObjectFile(char * filename, linkedList_t * defined, linkedList_t * undefined)
 {
-	static unsigned int suffix; // STOPPED WORKING HERE!
+	
+	char command[120];
+	char buffer[120];
+	FILE *fp;
+		
+	sprintf(command,"nm %s",filename);
+	// printf("%s\n",command);	
+	fp = popen(command, "r");
+	if (fp == NULL)  displayMessageAndExit("popen failed\n");
+	
+	char symbolType = '\0';
+	char symbolName[31];
+	node_t *node = NULL;
+	
+	while (fgets(buffer, sizeof(buffer), fp))
+	{
+		// puts(buffer);
+		sscanf(buffer,"%*9c %c %s",&symbolType,symbolName);         
+
+		if( (symbolType=='C' || symbolType=='T' || symbolType=='D') && 
+				searchList(undefined,&symbolName[0])!=NULL)
+		{
+			return true;
+		}
+		else if( (symbolType=='D' || symbolType=='T') && 
+				(node=searchList(defined,&symbolName[0]))!=NULL && 
+				node->type=='C' )
+		{
+			return true;
+		}
+	}
+	pclose(fp);
+
+	return false; 
+}
+
+static void handleArchive(char * filename, linkedList_t * defined, linkedList_t * undefined)
+{
+	char command[120];
+	
+	sprintf(command, "rm -f -r tmp");
+	// printf("%s\n",command);	
+	system(command);
+	
+	sprintf(command, "mkdir tmp");
+	// printf("%s\n",command);	
+	system(command);
+	
+	sprintf(command,"cp %s ./tmp/",filename);
+	// printf("%s\n",command);	
+	system(command);
+	
+	sprintf(command,"cd tmp; ar -x %s",filename);
+	// printf("%s\n",command);	
+	system(command);
+	
+	FILE *fp;
+	bool changed = false;
+	do {
+		sprintf(command, "ls ./tmp/*.o");
+		
+		fp = popen(command, "r");
+		if (fp == NULL)  displayMessageAndExit("popen failed\n");
+		
+		char objectFile[80];
+		changed=false;
+		while (fgets(objectFile, sizeof(objectFile), fp))
+		{
+			sscanf("%s",objectFile);
+			if(handleArchiveObjectFile(&objectFile[0],defined,undefined))
+			{
+				handleObjectFile(&objectFile[0], defined, undefined);
+				changed=true;
+			}
+		}
+		pclose(fp);
+	} while (changed==true);
+	return;
+	
+	sprintf(command, "rm -f -r tmp");
+	// printf("%s\n",command);
+	system(command);
+}
+
+static void handleObjectSymbol(char symbolType, char * symbolName, linkedList_t * defined, 
+		linkedList_t * undefined) 
+{
+	node_t *node = NULL;
+	static unsigned int suffix=0;
 	switch(symbolType)
 	{
 		case 'U':
-			if(searchList(defined,symbolName)==NULL && searchList(undefined,symbolName)==NULL)
+			if(searchList(defined,symbolName)==NULL && 
+					searchList(undefined,symbolName)==NULL)
+			{
 				insertNode(undefined,symbolName,symbolType);
+			}
 			break;
 		case 'C':
 			if(searchList(defined,symbolName)==NULL)
@@ -105,8 +215,36 @@ handleObjectSymbol(char symbolType, char * symbolName, linkedList_t * defined, l
 			}
 			removeNode(undefined,symbolName);
 			break;
-		case 'A':
-			
+		case 'b':
+		case 'd':
+			sprintf( symbolName, "%s.%u", symbolName, suffix++);
+			insertNode(defined,symbolName,symbolType);
+			break;
+		case 'T':
+		case 'D':
+			node=searchList(defined,symbolName);
+			if(node!=NULL)
+			{
+				switch(node->type)
+				{
+					case 'T':
+					case 'D':
+						printf(": multiple definition of %s\n",symbolName);
+						break;
+					case 'C':
+						updateNode(defined,symbolName,symbolType);
+						break;
+				}
+			}
+			else
+			{
+				insertNode(defined,symbolName,symbolType);
+			}
+			node=searchList(undefined,symbolName);
+			if(node!=NULL)
+			{
+				removeNode(undefined,symbolName);
+			}
 			break;
 	}
 }
@@ -115,34 +253,6 @@ static void displayMessageAndExit(char * message)
 {
 	printf("%s",message);
 	exit(EXIT_FAILURE);
-}
-
-static void handleArchive(char * filename, linkedList_t * defined, linkedList_t * undefined)
-{
-	char *fileName = strcat("nm ", filename);
-	char buffer[120];
-	FILE *fp;
-	fp = popen(fileName, "r");
-	
-	//you need to write this displayMessageAndExit function
-	if (fp == NULL)  displayMessageAndExit("popen failed\n");
-	
-	char symbolType = '\0';
-	char symbolName[31];
-	while (fgets(buffer, sizeof(buffer), fp))
-	{
-		sscanf("%*d\t%c\t%s",&symbolType,symbolName);
-		printf(
-				"Symbol:\t%c\n"
-				"Name:\t%s\n\n",
-				symbolType,
-				symbolName
-		);
-	}
-	pclose(fp);
-
-	return;
-    // printf("archive file: %s\n", filename);
 }
 
 /* 

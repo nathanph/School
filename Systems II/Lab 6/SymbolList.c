@@ -3,7 +3,7 @@
  * Author: Nathan Hernandez 
  *
  * Created on April 16, 2014, 6:41 AM
- */ 
+ */
 
 #include <string.h>
 #include <stdlib.h>
@@ -61,18 +61,18 @@ linkedList_t * initializeList()
 bool deleteList(linkedList_t *list) 
 {
 	// Declare vars for iterating.
-	node_t *current = list->head;
+	node_t *node = list->head;
 	node_t *temp;
 	
 	// Iterate and remove nodes.
-	while( current != NULL ) 
+	while( node != NULL ) 
 	{
-		temp = current;
-		current=current->next;
+		temp = node;
+		node=node->next;
 		free(temp);
 	}
 	
-	free(list);
+	free(list); 
 	
 	return true;
 }
@@ -130,20 +130,17 @@ bool updateNode(linkedList_t *list, char * name, char type)
 node_t * searchList(linkedList_t *list, char * name) 
 {
 	// Declare vars for iterating.
-	node_t *current = list->head;
-	node_t *needle;
-	
-	// Iterate nodes until node is found or list ends.
-	while( current != NULL ) 
-	{
-		needle = current;
+	node_t *node = list->head;
 		
+	// Iterate nodes until node is found or list ends.
+	while( node != NULL ) 
+	{				
 		// If node found return it.
-		if(!strcmp(name,needle->name))
+		if(strcmp(name,node->name)==0)
 		{
-			return needle;
+			return node;
 		}
-		current=current->next;
+		node=node->next;
 	}
 	
 	return NULL;
@@ -183,22 +180,23 @@ bool removeNode(linkedList_t *list, char * name)
 void printList( linkedList_t *list ) 
 {
 	// Declare vars for iterating.
-	node_t *current = list->head;
-	unsigned int node = 0;
+	node_t *node = list->head;
+	// unsigned int nodeCount = 0;
 	
 	printf(
-			"Node\t\tType\t\tName\n"
-			"======================================================\n"
+			// "Node\t\tType\t\tName\n"
+			"-----------------------\n"
 	);
 	// Iterate and remove nodes.
-	while( current != NULL ) 
+	while( node != NULL ) 
 	{
-		if(current != list->head && current!=list->tail) 
+		if(node != list->head && node!=list->tail) 
 		{
-			printf("%d\t\t%c\t\t%s\n",node,current->type,current->name);
-			node++;
+			// printf("%d\t\t%c\t\t%s\n",nodeCount,node->type,node->name);
+			printf("%-33s%c\n",node->name,node->type);
+			// nodeCount++;
 		}
-		current=current->next;
+		node=node->next;
 	}
 	
 	return;

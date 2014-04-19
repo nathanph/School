@@ -12,7 +12,7 @@
  *              Members of an archive are visited repeatedly until there are 
  *              no changes in the lists of defined and undefined symbols.
  *
- *              If at some point there is an attempt to add a second strong 
+ *              If at some point there is an attempt to add a second strong
  *              symbol to the defined symbols list, then an error message is
  *              displayed indicating the multiple definition.
  *

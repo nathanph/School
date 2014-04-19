@@ -12,7 +12,7 @@
 extern "C" {
 #endif
 
-#include <stdbool.h> 
+#include <stdbool.h>
 #include "SymbolList.h"
 
 static bool isArchive(char * filename);
